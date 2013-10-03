@@ -60,7 +60,7 @@ print_header()
     char  *token, *s_token, *n_record;
     struct module *mod = NULL;
 
-    if (conf.running_mode == RUN_PRINT_LIVE) {
+    if (conf.running_mode == RUN_PRINT_LIVE) {//LIVE实时输出包含秒数，所以长3个字符
         sprintf(opt_line, "Time             %s", PRINT_SEC_SPLIT);
         sprintf(hdr_line, "Time             %s", PRINT_SEC_SPLIT);
 
@@ -77,7 +77,7 @@ print_header()
 
         memset(n_opt, 0, sizeof(n_opt));
         memset(mod_hdr, 0, sizeof(mod_hdr));
-        get_mod_hdr(mod_hdr, mod);
+        get_mod_hdr(mod_hdr, mod);//获得这个模块的hader。
 
         if (strstr(mod->record, ITEM_SPLIT) && MERGE_NOT == conf.print_merge) {
             n_record = strdup(mod->record);
@@ -223,7 +223,7 @@ print_current_time()
 
 void
 print_record()
-{
+{//打印st_array里面的数据
     int        i, j;
     double    *st_array;
     struct     module *mod = NULL;
@@ -259,7 +259,7 @@ print_record()
 /* running in print live mode */
 void
 running_print_live()
-{
+{//实时隔一会打印一行数据。
     int print_num = 1, re_p_hdr = 0;
 
     collect_record();
@@ -278,7 +278,7 @@ running_print_live()
 
     /* print live record */
     while (1) {
-        collect_record();
+        collect_record();//调用各个模块的回调函数，获取一次当前的数据，字符串形式保存在mod->record中。
 
         if (!((print_num) % DEFAULT_PRINT_NUM) || re_p_hdr) {
             /* get the header will print every DEFAULT_PRINT_NUM */
@@ -287,18 +287,18 @@ running_print_live()
             print_num = 1;
         }
 
-        if (!collect_record_stat()) {
+        if (!collect_record_stat()) {//解析mod->record里面的数据，放入st_array中，以备打印
             re_p_hdr = 1;
             continue;
         }
 
         /* print current time */
         print_current_time();
-        print_record();
+        print_record();//打印st_array里面的数据
 
         print_num++;
         /* sleep every interval */
-        sleep(conf.print_interval);
+        sleep(conf.print_interval);//睡会。
     }
 }
 
@@ -322,7 +322,7 @@ find_offset_from_start(FILE *fp, int number)
     char   *p_sec_token;
     time_t  now, t_token, t_get;
     struct  tm stm;
-
+//来回fseek,ftell获取文件长度。为啥不直接获取呢，stat
     /* get file len */
     if (fseek(fp, 0, SEEK_END) != 0 ) {
         do_debug(LOG_FATAL, "fseek error:%s", strerror(errno));
@@ -337,7 +337,7 @@ find_offset_from_start(FILE *fp, int number)
         do_debug(LOG_FATAL, "ftell error:%s", strerror(errno));
     }
     file_len = fend - fset;
-
+//得到第一行内容，后面用来判断是否是第一行的
     memset(&line, 0, LEN_10240);
     if (!fgets(line, LEN_10240, fp)) {
         do_debug(LOG_FATAL, "fgets error:%s", strerror(errno));
@@ -346,7 +346,7 @@ find_offset_from_start(FILE *fp, int number)
 
     /* get time token */
     time(&now);
-    if (conf.print_day > 180) {
+    if (conf.print_day > 180) {//
         /*get specify date by --date/-d*/
         stm.tm_year = conf.print_day / 10000 - 1900;
         stm.tm_mon = conf.print_day % 10000 / 100 - 1;
@@ -372,34 +372,34 @@ find_offset_from_start(FILE *fp, int number)
         now = now - now % (60 * conf.print_nline_interval);
         t_token = now - conf.print_ndays * (24 * 60 * 60) - (60 * conf.print_nline_interval);
         conf.print_start_time = t_token;
-        conf.print_end_time = now + (60 * conf.print_nline_interval);
+        conf.print_end_time = now + (60 * conf.print_nline_interval);//print_nline_interval每次跳过的行数。每秒一行。
     }
 
     offset = off_start = 0;
     off_end = file_len;
-    while (1) {
-        offset = (off_start + off_end) / 2;
+    while (1) {//二分查找文件，找出我要打印的行在什么位置。根据每行开头的时间戳。
+        offset = (off_start + off_end) / 2;//从中间查找
         memset(&line, 0, LEN_10240);
-        if (fseek(fp, offset, SEEK_SET) != 0) {
+        if (fseek(fp, offset, SEEK_SET) != 0) {//移动指针到中间位置
             do_debug(LOG_FATAL, "fseek error:%s", strerror(errno));
         }
-        if (!fgets(line, LEN_10240, fp)) {
+        if (!fgets(line, LEN_10240, fp)) {//试探性读取一行。其实就是将这半行过滤，区下一行内容。
             do_debug(LOG_FATAL, "fgets error:%s", strerror(errno));
         }
         memset(&line, 0, LEN_10240);
-        if (!fgets(line, LEN_10240, fp)) {
+        if (!fgets(line, LEN_10240, fp)) {//得到完整的一行数据。
             do_debug(LOG_FATAL, "fgets error:%s", strerror(errno));
         }
-        if (0 != line[0] && offset > line_len) {
-            p_sec_token = strstr(line, SECTION_SPLIT);
+        if (0 != line[0] && offset > line_len) {//如果不是第一行。
+            p_sec_token = strstr(line, SECTION_SPLIT);//查找用|分割的行，其实就是前面的时间戳。
             if (p_sec_token) {
                 *p_sec_token = '\0';
-                t_get = atol(line);
-                if (abs(t_get - t_token) <= 60) {
+                t_get = atol(line);//得到时间戳
+                if (abs(t_get - t_token) <= 60) {//OK，正好要打印的行是这个。
                     conf.print_file_number = number;
                     return 0;
                 }
-
+//没有找到，这个不是我要的行。下面进行二分查找文件。
                 /* Binary Search */
                 if (t_get > t_token) {
                     off_end = offset;
@@ -413,7 +413,7 @@ find_offset_from_start(FILE *fp, int number)
                 return 5;
             }
 
-        } else {
+        } else {//文件内容有问题肯定。
             if (off_end == file_len) {
                 if (number > 0) {
                     conf.print_file_number = number - 1;
@@ -425,7 +425,7 @@ find_offset_from_start(FILE *fp, int number)
                     return 3;
                 }
             }
-            if (off_start == 0) {
+            if (off_start == 0) {//
                 conf.print_file_number = number;
                 /* need to research tsar.data.number+1; */
                 return 1;
@@ -615,15 +615,15 @@ init_running_print()
     /* will print tail*/
     conf.print_tail = 1;
 
-    fp = fopen(conf.output_file_path, "r");
+    fp = fopen(conf.output_file_path, "r");//读取/var/log/tsar.data文件
     if (!fp) {
         do_debug(LOG_FATAL, "unable to open the log file %s\n", conf.output_file_path);
     }
     /*log number to use for print*/
     conf.print_file_number = -1;
     /* find start offset will print from tsar.data */
-    k=find_offset_from_start(fp, i);
-    if (k == 1) {
+    k=find_offset_from_start(fp, i);//在tsar.data文件中，用二分查找，找出要开始打印的行的位置放在print_file_number。
+    if (k == 1) {//如果返回1，代表当前的文件里面没有数据，数据在后面的文件中。用同样的方法扫描后面的文件。
         /*find all possible record*/
         for (i=1; ; i++) {
             memset(filename, 0, sizeof(filename));
@@ -673,15 +673,15 @@ init_running_print()
     }
 
     /* read one line to init module parameter */
-    read_line_to_module_record(line);
+    read_line_to_module_record(line);//读取一行数据到每个模块的mod->record
 
     /* print header */
-    print_header();
+    print_header();//打印头部信息
 
     /* set struct module fields */
     init_module_fields();
 
-    set_record_time(line);
+    set_record_time(line);//更新conf.print_interval的间隔时间
     return fp;
 }
 
@@ -698,7 +698,7 @@ running_print()
     long   n_record = 0, s_time;
     FILE  *fp;
 
-    fp = init_running_print();
+    fp = init_running_print();//初始化，找到数据在哪个文件的什么部位。打印头部信息等。
 
     /* skip first record */
     if (collect_record_stat() == 0) {
@@ -709,7 +709,7 @@ running_print()
             if (conf.print_file_number <= 0) {
                 break;
 
-            } else {
+            } else {//得读取下一个文件了。
                 conf.print_file_number = conf.print_file_number - 1;
                 memset(filename, 0, sizeof(filename));
                 if (conf.print_file_number == 0) {

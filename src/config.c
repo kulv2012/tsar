@@ -38,12 +38,12 @@ parse_mod(const char *mod_name)
     if (token && (!strcasecmp(token, "on") || !strcasecmp(token, "enable"))) {
         strncpy(mod->name, mod_name, strlen(mod_name));
         token = strtok(NULL, W_SPACE);
-        if (token) {
+        if (token) {//后面的是参数
             strncpy(mod->parameter, token, strlen(token));
         }
         return;
 
-    } else {
+    } else {//mod关闭了
         memset(mod, 0, sizeof(struct module));
         statis.total_mod_num--;
     }
@@ -61,7 +61,7 @@ special_mod(const char *spec_mod)
     for ( i = 0; i < statis.total_mod_num; i++ )
     {
         mod = &mods[i];
-        if (!strcmp(mod->name, mod_name)) {
+        if (!strcmp(mod->name, mod_name)) {//找到一个名字相同的，load_modules用来干嘛，main也会调用的。
             /* set special field */
             load_modules();
             char    *token = strtok(NULL, W_SPACE);
@@ -102,14 +102,14 @@ parse_string(char *var)
 
 void
 parse_add_string(char *var)
-{
+{//下面的代码有bug吧，var == NULL了，并且token不为空时就core了。不过上层不可能传递null.
     char   *token = strtok(NULL, W_SPACE);
     if (var == NULL) {
         if (token) {
             strncpy(var, token, strlen(token));
         }
 
-    } else {
+    } else {//下面的代码好诡异，将var的数据放到token后面，然后再用token覆盖var，其实就是将token插入到var的头部。逗号分开。
         if (token) {
             strcat(token, ",");
             strncat(token, var, strlen(var));
@@ -202,7 +202,7 @@ parse_line(char *buff)
         parse_string(conf.send_nsca_conf);
 
     } else if (!strcmp(token, "threshold")) {
-        get_threshold();
+        get_threshold();//配置配额信息
 
     } else {
         return 0;

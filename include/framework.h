@@ -47,7 +47,7 @@ struct module {
 
     /* private data used by framework*/
     int     n_item;
-    int     n_col;
+    int     n_col;//一行数据有几个数字，比如"112972552,360980911,2571697,2973,926835,6001125135,174173,137665086,0,8" 为10
     long    n_record;
 
     int     pre_flag:4;
@@ -56,9 +56,9 @@ struct module {
     U_64   *pre_array;
     U_64   *cur_array;
     double *st_array;
-    double *max_array;
-    double *mean_array;
-    double *min_array;
+    double *max_array;//最大值
+    double *mean_array;//均值
+    double *min_array;//最小值
 
     /* callback function of module */
     void (*data_collect) (struct module *, char *);

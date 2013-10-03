@@ -46,7 +46,7 @@ struct configure {
     int     print_day;                  /* which day will print*/
     int     print_start_time;           /* the start of the print time*/
     int     print_end_time;             /* the end of the print time*/
-    int     print_tail;
+    int     print_tail;//是否统计均值，最大值，最小值等
     int     print_file_number;          /* which tsar.data file used*/
 
     /* output db */

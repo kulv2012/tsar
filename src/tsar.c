@@ -245,21 +245,21 @@ running_cron()
 int
 main(int argc, char **argv)
 {
-    parse_config_file(DEFAULT_CONF_FILE_PATH);
+    parse_config_file(DEFAULT_CONF_FILE_PATH);//读取配置
 
-    load_modules();
+    load_modules();//加载各个模块，调用mod_register函数、
 
     statis.cur_time = time(NULL);
 
     conf.print_day = -1;
 
-    main_init(argc, argv);
+    main_init(argc, argv);//纯解析命令行参数。
 
     /*
      * enter running
      */
     switch (conf.running_mode) {
-        case RUN_LIST:
+        case RUN_LIST://打印加载的所有模块列表
             running_list();
             break;
 
@@ -284,18 +284,18 @@ main(int argc, char **argv)
             disable_col_zero();
             running_check(RUN_CHECK_NEW);
             break;
-        case RUN_PRINT:
+        case RUN_PRINT://默认就是RUN_PRINT，打印信息
             /* reload module by output_stdio_mod and output_print_mod*/
-            reload_modules(conf.output_stdio_mod);
+            reload_modules(conf.output_stdio_mod);//打开这2个模块中的一个，其他都关闭。
             reload_modules(conf.output_print_mod);
 
             /* disable module when n_col is zero */
-            disable_col_zero();
+            disable_col_zero();//关闭那些列数为0的模块
 
             /* set conf.print_nline_interval */
             conf.print_nline_interval = conf.print_interval;
 
-            running_print();
+            running_print();//从文件中读取指定时间范围的数据打印出来。
             break;
 
         case RUN_PRINT_LIVE:
@@ -306,7 +306,7 @@ main(int argc, char **argv)
             /* disable module when n_col is zero */
             disable_col_zero();
 
-            running_print_live();
+            running_print_live();//实时隔一会打印一行数据。
             break;
 
         default:

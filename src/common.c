@@ -38,7 +38,7 @@ is_digit(const char *str)
  */
 int
 convert_record_to_array(U_64 *array, int l_array, const char *record)
-{
+{//将"112972552,360980911,2571697,2973,926835,6001125135,174173,137665086,0,8"形式的一个个数字字符串，赋值到array参数中，一个个挨着赋值。
     int     i = 0;
     char   *token;
     char    n_str[LEN_4096] = {0};
@@ -164,7 +164,7 @@ get_strtok_num(const char *str, const char *split)
  */
 void
 get_mod_hdr(char hdr[], const struct module *mod)
-{
+{//得到一个模块的打印头部信息。列数为mod->n_col
     int    i, pos = 0;
     struct mod_info *info = mod->info;
     for (i = 0; i < mod->n_col; i++) {

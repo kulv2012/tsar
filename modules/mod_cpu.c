@@ -36,7 +36,7 @@ read_cpu_stats(struct module *mod)
         return;
     }
     while (fgets(line, LEN_4096, fp) != NULL) {
-        if (!strncmp(line, "cpu ", 4)) {
+        if (!strncmp(line, "cpu ", 4)) {//查找平均CPU信息
             /*
              * Read the number of jiffies spent in the different modes
              * (user, nice, etc.) among all proc. CPU usage is not reduced
@@ -54,7 +54,7 @@ read_cpu_stats(struct module *mod)
                     &st_cpu.cpu_guest);
         }
     }
-
+//下面一个个扫，看有几个processor   : 开头的字符串，就说明有几个CPU
     /* get cpu number */
     if ((ncpufp = fopen("/proc/cpuinfo", "r")) == NULL) {
         fclose(fp);
@@ -84,15 +84,14 @@ read_cpu_stats(struct module *mod)
             st_cpu.cpu_number);
 
     buf[pos] = '\0';
-    set_mod_record(mod, buf);
+    set_mod_record(mod, buf);//在mod->record里面记录这条信息。
     if (fclose(fp) < 0) {
         return;
     }
 }
 
 static void
-set_cpu_record(struct module *mod, double st_array[],
-    U_64 pre_array[], U_64 cur_array[], int inter)
+set_cpu_record(struct module *mod, double st_array[], U_64 pre_array[], U_64 cur_array[], int inter)
 {
     int    i, j;
     U_64   pre_total, cur_total;
@@ -143,6 +142,6 @@ static struct mod_info cpu_info[] = {
 
 void
 mod_register(struct module *mod)
-{
+{//像主程序注册一个--cpu的命令，以及读写的回调函数。间隔等。
     register_mod_fileds(mod, "--cpu", cpu_usage, cpu_info, 10, read_cpu_stats, set_cpu_record);
 }

@@ -47,7 +47,7 @@ set_mod_record(struct module *mod, const char *record)
  */
 void
 load_modules()
-{
+{//根据模块名，dlopen加载模块，然后调用每个模块的mod_register函数
     int     i;
     char    buff[LEN_128] = {0};
     char    mod_path[LEN_128] = {0};
@@ -72,7 +72,7 @@ load_modules()
                     break;
 
                 } else {
-                    mod_register(mod);
+                    mod_register(mod);//调用其mod_register函数。这些函数一般会调用register_mod_fileds注册get/set回调的。
                     mod->enable = 1;
                     mod->spec = 0;
                     do_debug(LOG_INFO, "load_modules: load new module '%s' to mods\n", mod_path);
@@ -120,7 +120,7 @@ reload_modules(const char *s_mod)
     if (!s_mod || !strlen(s_mod)) {
         return reload;
     }
-
+//根据模块查找，找到后将enable=1，否则=0，然后返回是否找到。但是没干其他事情。什么意思
     for (i = 0; i < statis.total_mod_num; i++) {
         mod = &mods[i];
         if (is_include_string(s_mod, mod->name) || is_include_string(s_mod, mod->opt_line)) {
@@ -209,7 +209,7 @@ init_module_fields()
  */
 void
 realloc_module_array(struct module *mod, int n_n_item)
-{
+{//分配存储空间，mod->n_col为一调数据包含的数字个数。n_n_item为这个模块包含多少条类似的数据。比如IO就有2条
     if (n_n_item > mod->n_item) {
         if (mod->pre_array) {
             mod->pre_array = (U_64 *)realloc(mod->pre_array, n_n_item * mod->n_col * sizeof(U_64));
@@ -239,7 +239,7 @@ realloc_module_array(struct module *mod, int n_n_item)
  */
 void
 set_st_record(struct module *mod)
-{
+{//将cur_array的数据处理后，放到st_array以备打印。同时计算统计数据
     int    i, j, k = 0;
     struct mod_info *info = mod->info;
 
@@ -247,17 +247,17 @@ set_st_record(struct module *mod)
 
     for (i = 0; i < mod->n_item; i++) {
         /* custom statis compute */
-        if (mod->set_st_record) {
+        if (mod->set_st_record) {//如果用户设置了"设置统计数据回调"，则先直接调用她。
             mod->set_st_record(mod, &mod->st_array[i * mod->n_col],
                     &mod->pre_array[i * mod->n_col],
                     &mod->cur_array[i * mod->n_col],
                     conf.print_interval);
         }
 
-        for (j=0; j < mod->n_col; j++) {
+        for (j=0; j < mod->n_col; j++) {//对一条数据里面的每个数字，一个个处理
             if (!mod->set_st_record) {
                 switch (info[j].stats_opt) {
-                    case STATS_SUB:
+                    case STATS_SUB://相减
                         if (mod->cur_array[k] < mod->pre_array[k]) {
                             mod->pre_array[k] = mod->cur_array[k];
                             mod->st_flag = 0;
@@ -266,7 +266,7 @@ set_st_record(struct module *mod)
                             mod->st_array[k] = mod->cur_array[k] - mod->pre_array[k];
                         }
                         break;
-                    case STATS_SUB_INTER:
+                    case STATS_SUB_INTER://相减求平均
                         if (mod->cur_array[k] < mod->pre_array[k]) {
                             mod->pre_array[k] = mod->cur_array[k];
                             mod->st_flag = 0;
@@ -320,8 +320,9 @@ collect_record()
             continue;
         }
 
-        memset(mod->record, 0, sizeof(mod->record));
-        if (mod->data_collect) {
+        memset(mod->record, 0, sizeof(mod->record));//清空上次的数据
+        if (mod->data_collect) {//调用其read_cpu_stats回调函数，获取数据。比如CPU的为read_cpu_stats
+        //回调函数读取数据后，会将字符串数据放到mod->record里面去的。
             mod->data_collect(mod, mod->parameter);
         }
     }
@@ -335,7 +336,8 @@ collect_record()
  */
 int
 collect_record_stat()
-{
+{//对从每个模块收集回来的字符串数据进行加工处理，将,逗号分开的数字处理后放入cur_array，
+//然后进行统计，放入st_array以备打印。必要时统计方式会回调各个模块的回调。
     int    i, n_item, ret, no_p_hdr = 1;
     U_64  *tmp, array[MAX_COL_NUM] = {0};
     struct module *mod = NULL;
@@ -350,15 +352,15 @@ collect_record_stat()
         mod->st_flag = 0;
         ret = 0;
 
-        if ((n_item = get_strtok_num(mod->record, ITEM_SPLIT))) {
+        if ((n_item = get_strtok_num(mod->record, ITEM_SPLIT))) {//得到item数目
             /* not merge mode, and last n_item != cur n_item, then reset mod->n_item and set reprint header flag */
             if (MERGE_ITEM != conf.print_merge && n_item && n_item != mod->n_item) {
-                no_p_hdr = 0;
+                no_p_hdr = 0;//这个模块的列数发生变化了，需要重新打印头部，分配各个数组长度。
                 /* reset struct module fields */
                 realloc_module_array(mod, n_item);
             }
 
-            mod->n_item = n_item;
+            mod->n_item = n_item;//item数目，比如I/O 分读写
             /* multiply item because of have ITEM_SPLIT */
             if (strstr(mod->record, ITEM_SPLIT)) {
                 /* merge items */
@@ -370,8 +372,9 @@ collect_record_stat()
                     char item[LEN_128] = {0};
                     int num = 0;
                     int pos = 0;
-
+					//循环将当前模块的不同数据放到当前数组cur_array
                     while (strtok_next_item(item, mod->record, &pos)) {
+						//将这一条数据里面逗号分隔的数字放到字cur_array对应的位置。
                         if (!(ret=convert_record_to_array(&mod->cur_array[num * mod->n_col], mod->n_col, item))) {
                             break;
                         }
@@ -380,19 +383,19 @@ collect_record_stat()
                     }
                 }
 
-            } else { /* one item */
+            } else { /* one item *///如果只有一个item，直接将其数据放入cur_array的开头即可。一共n_col个数。每个都为浮点数。
                 ret = convert_record_to_array(mod->cur_array, mod->n_col, mod->record);
             }
 
             /* get st record */
-            if (no_p_hdr && mod->pre_flag && ret) {
-                set_st_record(mod);
+            if (no_p_hdr && mod->pre_flag && ret) {//这是不是第一条数据，并且不是最后一条数据。就需要进行数据合并
+                set_st_record(mod);///进行统计。合并数据，求和等。结果放入st_array
             }
 
             if (!ret) {
                 mod->pre_flag = 0;
 
-            } else {
+            } else {//刚才是成功得到一条数据的。下一条数据需要进行合并。
                 mod->pre_flag = 1;
             }
 
@@ -401,8 +404,8 @@ collect_record_stat()
         }
         /* swap cur_array to pre_array */
         tmp = mod->pre_array;
-        mod->pre_array = mod->cur_array;
-        mod->cur_array = tmp;
+        mod->pre_array = mod->cur_array;//pre_array指向新的，待会就是旧的数据了。其实这种代码放在最开头是比较自然的。
+        mod->cur_array = tmp;//老的数据
     }
 
     return no_p_hdr;
@@ -463,7 +466,7 @@ read_line_to_module_record(char *line)
             sprintf(mod_opt, "%s%s%s", SECTION_SPLIT, mod->opt_line, STRING_SPLIT);
             memset(mod->record, 0, sizeof(mod->record));
 
-            s_token = strstr(line, mod_opt);
+            s_token = strstr(line, mod_opt);//查找--cpu等模块的位置，
             if (!s_token) {
                 continue;
             }
@@ -487,7 +490,7 @@ read_line_to_module_record(char *line)
  */
 void
 disable_col_zero()
-{
+{//关闭那些n_col为0的模块，如果不是0，也就是输出的列数不为0.则需要
     int    i, j;
     struct module *mod = NULL;
 
